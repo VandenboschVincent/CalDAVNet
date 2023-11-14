@@ -14,14 +14,6 @@ namespace CalDAVNet;
 /// </summary>
 public partial class Client
 {
-    /// <summary>
-    /// The content types.
-    /// </summary>
-    private static readonly List<string> contentTypes = new()
-    {
-        "httpd/unix-directory",
-        "text/calendar"
-    };
 
     /// <summary>
     /// The tag regex.
@@ -30,14 +22,9 @@ public partial class Client
     private static partial Regex TagRegex();
 
     /// <summary>
-    /// The tag regex.
-    /// </summary>
-    private readonly Regex tagRegex = TagRegex();
-
-    /// <summary>
     /// The CalDAV client.
     /// </summary>
-    private readonly CalDAVClient client;
+    private readonly CalDavClient client;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Client"/> class.
@@ -49,7 +36,7 @@ public partial class Client
     {
         this.Uri = uri;
         this.UserName = userName;
-        this.client = new CalDAVClient(uri, userName, password);
+        this.client = new CalDavClient(uri, userName, password);
     }
 
     /// <summary>
@@ -60,15 +47,20 @@ public partial class Client
     /// <param name="userName">The user name.</param>
     public Client(string uri, string userName, string password)
     {
+        if (uri.Last() != '/')
+        {
+            uri += '/';
+        }
+
         this.Uri = new Uri(uri);
         this.UserName = userName;
-        this.client = new CalDAVClient(this.Uri, userName, password);
+        this.client = new CalDavClient(this.Uri, userName, password);
     }
 
     /// <summary>
     /// Gets the user name to authenticate with.
     /// </summary>
-    public string UserName { get; } = string.Empty;
+    public string UserName { get; }
 
     /// <summary>
     /// Gets the uri of the server to connect to.

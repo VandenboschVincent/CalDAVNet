@@ -68,4 +68,9 @@ public sealed record class Calendar
     /// Gets or sets the events.
     /// </summary>
     public List<CalendarEvent> Events { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the timezone.
+    /// </summary>
+    public string TimeZone { get; set; } = string.Empty;
 }

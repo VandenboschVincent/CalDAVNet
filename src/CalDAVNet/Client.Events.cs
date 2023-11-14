@@ -8,7 +8,6 @@
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace CalDAVNet;
-
 /// <summary>
 /// The client class for event data.
 /// </summary>
@@ -24,10 +23,11 @@ public partial class Client
     /// </summary>
     /// <param name="calendarEvent">The calendar event.</param>
     /// <returns>A value indicating whether the event was deleted or not.</returns>
-    public async Task<bool> DeleteEvent(CalendarEvent calendarEvent)
+    public async Task<bool> DeleteEvent(CalendarEvent calendarEvent, string calendarUcid)
     {
+        string eventUrl = this.GetEventUrl(calendarEvent, calendarUcid);
         var result = await this.client
-            .Delete(this.GetEventUrl(calendarEvent))
+            .Delete(eventUrl)
             .Send()
             .ConfigureAwait(false);
 
@@ -35,19 +35,28 @@ public partial class Client
     }
 
     /// <summary>
-    /// Deletes an event.
+    /// AddOrUpdate an event.
     /// </summary>
     /// <param name="calendarEvent">The calendar event.</param>
     /// <param name="calendar">The calendar.</param>
     /// <returns>A value indicating whether the event was added or updated or not.</returns>
-    public async Task<bool> AddOrUpdateEvent(CalendarEvent calendarEvent, Ical.Net.Calendar calendar)
+    public async Task<bool> AddOrUpdateEvent(CalendarEvent calendarEvent, string calendarUcid, Ical.Net.Calendar? calendar = null)
     {
+        calendar ??= new Ical.Net.Calendar();
+        string eventUrl = this.GetEventUrl(calendarEvent, calendarUcid);
         var result = await this.client
-            .Put(this.GetEventUrl(calendarEvent), this.Serialize(calendarEvent, calendar))
+            .Put(eventUrl, this.Serialize(calendarEvent, calendar))
             .Send()
             .ConfigureAwait(false);
 
         return result.IsSuccessful;
+    }
+
+    private static string CombineUri(params string[] uris)
+    {
+        string joinedString = string.Join('/', uris);
+        joinedString = joinedString.Replace("//", "/").Replace(":/", "://");
+        return joinedString;
     }
 
     /// <summary>
@@ -55,9 +64,19 @@ public partial class Client
     /// </summary>
     /// <param name="calendarEvent">The calendar event.</param>
     /// <returns>The event url.</returns>
-    private string GetEventUrl(CalendarEvent calendarEvent)
+    private string GetEventUrl(CalendarEvent calendarEvent, string calendarUcid)
     {
-        return $"{this.Uri}/{calendarEvent.Uid}.ics";
+        if (calendarEvent.Url == null)
+        {
+            calendarEvent.Url = new Uri(CombineUri(this.client.baseUri.ToString(), calendarUcid, $"{calendarEvent.Uid}.ics"));
+        }
+
+        if (!calendarEvent.Url.ToString().EndsWith(".ics"))
+        {
+            calendarEvent.Url = new Uri(CombineUri(calendarEvent.Url.ToString(), $"{calendarEvent.Uid}.ics"));
+        }
+
+        return calendarEvent.Url.ToString();
     }
 
     /// <summary>

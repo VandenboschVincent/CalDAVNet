@@ -8,7 +8,6 @@
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace CalDAVNet;
-
 /// <summary>
 /// The client class for calendar data.
 /// </summary>
@@ -36,14 +35,6 @@ public partial class Client
     /// <returns>A <see cref="IEnumerable{T}"/> of <see cref="Calendar"/>s.</returns>
     public async Task<IEnumerable<Calendar>> GetAllCalendars()
     {
-        // Get the user uri.
-        var userUri = await this.GetUserUri();
-
-        if (string.IsNullOrWhiteSpace(userUri))
-        {
-            return new List<Calendar>();
-        }
-
         // Create the request body.
         var prop = new XElement(Namespaces.DavNs + ElementNames.Prop);
         prop.Add(new XElement(Namespaces.DavNs + ElementNames.ResourceType));
@@ -60,7 +51,7 @@ public partial class Client
 
         // Query for data.
         var result = await this.client
-            .Propfind(userUri, root)
+            .Propfind("", root)
             .Send()
             .ConfigureAwait(false);
 
@@ -74,6 +65,11 @@ public partial class Client
 
         foreach (var resource in result.Resources)
         {
+            if (!resource.Properties.Any(t => t.Value.Contains("calendar")))
+            {
+                continue;
+            }
+
             var calendar = await this.GetCalendarWithUri(resource.Uri);
 
             if (calendar is null)
@@ -109,14 +105,6 @@ public partial class Client
     /// <returns>The <see cref="Calendar"/> or <c>null</c> if none was found.</returns>
     public async Task<Calendar?> GetDefaultCalendar()
     {
-        // Get the user uri.
-        var userUri = await this.GetUserUri();
-
-        if (string.IsNullOrWhiteSpace(userUri))
-        {
-            return null;
-        }
-
         // Create the request body.
         var prop = new XElement(Namespaces.DavNs + ElementNames.Prop);
         prop.Add(new XElement(Namespaces.DavNs + ElementNames.ResourceType));
@@ -133,8 +121,7 @@ public partial class Client
 
         // Query for data.
         var result = await this.client
-            .Propfind(userUri, root)
-            .WithHeader(HeaderNames.Depth, HeaderValues.Zero)
+            .Propfind("", root)
             .Send()
             .ConfigureAwait(false);
 
@@ -144,15 +131,24 @@ public partial class Client
         }
 
         // Get resource.
-        var resource = result.Resources.FirstOrDefault();
-
-        if (resource is null)
+        foreach (var resource in result.Resources)
         {
-            return null;
+            if (!resource.Properties.Any(t => t.Value.Contains("calendar")))
+            {
+                continue;
+            }
+
+            var calendar = await this.GetCalendarWithUri(resource.Uri);
+
+            if (calendar is null)
+            {
+                continue;
+            }
+
+            return calendar;
         }
 
-        // Get calendar by uri.
-        return await this.GetCalendarWithUri(resource.Uri); ;
+        return null;
     }
 
     /// <summary>
@@ -180,60 +176,12 @@ public partial class Client
         // Get resource.
         var resource = result.Resources.FirstOrDefault();
 
-        // Check if the resource really is a calendar.
-        var contentType = resource?.Properties.FirstOrDefault(x => x.Key.LocalName == ElementNames.GetContentType);
-
-        if (!contentType.HasValue || resource is null || !contentTypes.Contains(contentType.Value.Value))
-        {
-            return null;
-        }
-
-        return await this.DeserializeCalendarResource(resource, uri, this.client);
-    }
-
-    /// <summary>
-    /// Gets the user uri.
-    /// </summary>
-    /// <returns>The user uri as <see cref="string"/> or <c>null</c> if none was found.</returns>
-    private async Task<string?> GetUserUri()
-    {
-        // Create the request body.
-        var prop = new XElement(Namespaces.DavNs + ElementNames.Prop);
-        prop.Add(new XElement(Namespaces.DavNs + ElementNames.CurrentUserPrincipal));
-
-        var root = new XElement(Namespaces.DavNs + ElementNames.PropFind, new XAttribute(XNamespace.Xmlns + ElementNames.D, Namespaces.DavNs));
-        root.Add(prop);
-
-        // Query for data.
-        var result = await this.client
-            .Propfind(string.Empty, root)
-            .WithHeader(HeaderNames.Depth, HeaderValues.Zero)
-            .Send()
-            .ConfigureAwait(false);
-
-        if (!result.IsSuccessful)
-        {
-            return null;
-        }
-
-        // Get resource.
-        var resource = result.Resources.FirstOrDefault();
-
         if (resource is null)
         {
             return null;
         }
 
-        // Check the resource for the user uri property.
-        foreach (var keyValue in resource.Properties)
-        {
-            if (keyValue.Key.LocalName == ElementNames.CurrentUserPrincipal)
-            {
-                return this.tagRegex.Replace(keyValue.Value, string.Empty);
-            }
-        }
-
-        return null;
+        return await this.DeserializeCalendarResource(resource, uri);
     }
 
     /// <summary>
@@ -243,7 +191,7 @@ public partial class Client
     /// <param name="uri">The uri.</param>
     /// <param name="client">The CalDAV client.</param>
     /// <returns>The <see cref="Calendar"/> or <c>null</c> if none was found.</returns>
-    private async Task<Calendar?> DeserializeCalendarResource(Resource resource, string uri, CalDAVClient client)
+    private async Task<Calendar?> DeserializeCalendarResource(Resource resource, string uri)
     {
         var calendar = new Calendar
         {
@@ -267,7 +215,7 @@ public partial class Client
                     break;
 
                 case ElementNames.GetLastModified:
-                    calendar.LastModified = DateTimeOffset.Parse(property.Value);
+                    calendar.LastModified = DateTimeOffset.Parse(property.Value, CultureInfo.InvariantCulture);
                     break;
 
                 case ElementNames.SyncToken:
@@ -286,12 +234,22 @@ public partial class Client
                 case ElementNames.CreationDate:
                     calendar.CreationDate = DateTimeOffset.ParseExact(property.Value, DateTimeFormat, CultureInfo.InvariantCulture);
                     break;
+
+                case ElementNames.TimeZone:
+                    calendar.TimeZone = property.Value;
+                    break;
+
+                default:
+                    break;
             }
         }
 
-        calendar.Uid = uri
-            .Replace(calendar.Owner, string.Empty)
-            .Replace("/", string.Empty);
+        if (uri.Last() == '/')
+        {
+            uri = uri.Remove(uri.Length - 1, 1);
+        }
+
+        calendar.Uid = uri.Split('/').LastOrDefault() ?? uri;
 
         // Fetch the events.
         var events = await this.GetEvents(uri).ConfigureAwait(false);

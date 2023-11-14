@@ -12,7 +12,7 @@ namespace CalDAVNet;
 /// <summary>
 /// The CalDAV client class.
 /// </summary>
-internal class CalDAVClient
+internal class CalDavClient
 {
     /// <summary>
     /// The HTTP client.
@@ -32,15 +32,15 @@ internal class CalDAVClient
     /// <summary>
     /// The base uri.
     /// </summary>
-    private readonly Uri baseUri;
+    public readonly Uri baseUri;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="CalDAVClient"/>.
+    /// Initializes a new instance of the <see cref="CalDavClient"/>.
     /// </summary>
     /// <param name="baseUri">The base uri.</param>
     /// <param name="userName">The user name.</param>
     /// <param name="password">The password.</param>
-    public CalDAVClient(Uri baseUri, string userName, string password)
+    public CalDavClient(Uri baseUri, string userName, string password)
     {
         this.baseUri = baseUri;
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Xml));

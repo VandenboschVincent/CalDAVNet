@@ -47,7 +47,7 @@ internal class ResourceResponse : Response
         var data = await message.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         var content = GetEncoding(message.Content, Encoding.UTF8).GetString(data, 0, data.Length);
 
-        if (TryParseDocument(content, out var document) == false || document.Root is null)
+        if (!TryParseDocument(content, out var document) || document.Root is null)
         {
             return;
         }

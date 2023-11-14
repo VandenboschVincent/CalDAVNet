@@ -135,6 +135,11 @@ internal static class ElementNames
     public const string SyncToken = "sync-token";
 
     /// <summary>
+    /// calendar timezone
+    /// </summary>
+    public const string TimeZone = "calendar-timezone";
+
+    /// <summary>
     /// The calendar color element name.
     /// </summary>
     public const string CalendarColor = "calendar-color";
