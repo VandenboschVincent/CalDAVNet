@@ -15,17 +15,6 @@ namespace CalDAVNet.Extensions;
 internal static partial class XElementExtensions
 {
     /// <summary>
-    /// The status code regex.
-    /// </summary>
-    [GeneratedRegex(".*(\\d{3}).*")]
-    private static partial Regex StatusCodeRegex();
-
-    /// <summary>
-    /// The status code regex.
-    /// </summary>
-    private static readonly Regex statusCodeRegex = StatusCodeRegex();
-
-    /// <summary>
     /// Gets the local name element.
     /// </summary>
     /// <param name="element">The element.</param>
@@ -75,7 +64,7 @@ internal static partial class XElementExtensions
             return -1;
         }
 
-        var codeGroup = statusCodeRegex.Match(rawValue).Groups[1];
+        var codeGroup = Client.MyRegex().Match(rawValue).Groups[1];
 
         if (!codeGroup.Success)
         {

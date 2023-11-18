@@ -12,12 +12,12 @@ namespace CalDAVNet;
 /// <summary>
 /// The CalDAV client class.
 /// </summary>
-internal class CalDavClient
+internal class CalDavClient : IDisposable
 {
     /// <summary>
     /// The HTTP client.
     /// </summary>
-    private static readonly HttpClient client = new();
+    private readonly HttpClient client = new();
 
     /// <summary>
     /// The propfind HTTP method.
@@ -43,11 +43,11 @@ internal class CalDavClient
     public CalDavClient(Uri baseUri, string userName, string password)
     {
         this.baseUri = baseUri;
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Xml));
-        client.DefaultRequestHeaders.Add(HeaderNames.Prefer, HeaderValues.ReturnMinimal);
-        client.DefaultRequestHeaders.Add(HeaderNames.Depth, HeaderValues.One);
+        this.client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Xml));
+        this.client.DefaultRequestHeaders.Add(HeaderNames.Prefer, HeaderValues.ReturnMinimal);
+        this.client.DefaultRequestHeaders.Add(HeaderNames.Depth, HeaderValues.One);
         var value = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{userName}:{password}"));
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(HeaderNames.Basic, value);
+        this.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(HeaderNames.Basic, value);
     }
 
     /// <summary>
@@ -119,6 +119,11 @@ internal class CalDavClient
     /// <returns>The <see cref="Request{T}"/>.</returns>
     private Request<T> CreateRequest<T>(string uri) where T : Response, new()
     {
-        return new Request<T>(new Uri(this.baseUri, uri), client);
+        return new Request<T>(new Uri(this.baseUri, uri), this.client);
+    }
+
+    public void Dispose()
+    {
+        this.client.Dispose();
     }
 }

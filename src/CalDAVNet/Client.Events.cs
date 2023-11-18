@@ -8,6 +8,7 @@
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace CalDAVNet;
+
 /// <summary>
 /// The client class for event data.
 /// </summary>
@@ -16,7 +17,7 @@ public partial class Client
     /// <summary>
     /// The calendar serializer.
     /// </summary>
-    private static readonly CalendarSerializer calendarSerializer = new();
+    private readonly CalendarSerializer calendarSerializer = new();
 
     /// <summary>
     /// Deletes an event.
@@ -66,7 +67,7 @@ public partial class Client
     /// <returns>The event url.</returns>
     private string GetEventUrl(CalendarEvent calendarEvent, string calendarUcid)
     {
-        if (calendarEvent.Url == null)
+        if (calendarEvent.Url == null || !calendarEvent.Url.ToString().StartsWith(this.client.baseUri.ToString()))
         {
             calendarEvent.Url = new Uri(CombineUri(this.client.baseUri.ToString(), calendarUcid, $"{calendarEvent.Uid}.ics"));
         }
@@ -89,6 +90,6 @@ public partial class Client
     {
         calendar.Events.Clear();
         calendar.Events.Add(calendarEvent);
-        return calendarSerializer.SerializeToString(calendar);
+        return this.calendarSerializer.SerializeToString(calendar);
     }
 }

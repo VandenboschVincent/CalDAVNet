@@ -12,15 +12,8 @@ namespace CalDAVNet;
 /// <summary>
 /// The client class.
 /// </summary>
-public partial class Client
+public partial class Client : IDisposable
 {
-
-    /// <summary>
-    /// The tag regex.
-    /// </summary>
-    [GeneratedRegex("<[^>]*(>|$)")]
-    private static partial Regex TagRegex();
-
     /// <summary>
     /// The CalDAV client.
     /// </summary>
@@ -66,4 +59,9 @@ public partial class Client
     /// Gets the uri of the server to connect to.
     /// </summary>
     public Uri Uri { get; }
+
+    public void Dispose()
+    {
+        this.client.Dispose();
+    }
 }

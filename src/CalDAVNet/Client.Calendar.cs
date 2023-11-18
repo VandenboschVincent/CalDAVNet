@@ -8,22 +8,12 @@
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace CalDAVNet;
+
 /// <summary>
 /// The client class for calendar data.
 /// </summary>
 public partial class Client
 {
-    /// <summary>
-    /// The href code regex.
-    /// </summary>
-    [GeneratedRegex("<[^>]*(>|$)")]
-    private static partial Regex HrefRegex();
-
-    /// <summary>
-    /// The href code regex.
-    /// </summary>
-    private static readonly Regex hrefRegex = HrefRegex();
-
     /// <summary>
     /// The date time format.
     /// </summary>
@@ -198,6 +188,7 @@ public partial class Client
             Uri = uri
         };
 
+        //calendar-order
         foreach (var property in resource.Properties)
         {
             switch (property.Key.LocalName)
@@ -207,7 +198,7 @@ public partial class Client
                     break;
 
                 case ElementNames.Owner:
-                    calendar.Owner = property.Value.Contains(ElementNames.Href) ? hrefRegex.Replace(property.Value, string.Empty) : property.Value;
+                    calendar.Owner = property.Value.Contains(ElementNames.Href) ? MyRegex().Replace(property.Value, string.Empty) : property.Value;
                     break;
 
                 case ElementNames.GetETag:
@@ -289,4 +280,7 @@ public partial class Client
             .SelectMany(x => Ical.Net.Calendar.Load<Ical.Net.Calendar>(x.Value))
             .SelectMany(x => x.Events);
     }
+
+    [GeneratedRegex(".*(\\d{3}).*")]
+    public static partial Regex MyRegex();
 }
