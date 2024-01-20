@@ -9,24 +9,21 @@
 
 namespace CalDAVNet;
 
+using iCalNET;
+
 /// <summary>
 /// The client class for event data.
 /// </summary>
 public partial class Client
 {
     /// <summary>
-    /// The calendar serializer.
-    /// </summary>
-    private readonly CalendarSerializer calendarSerializer = new();
-
-    /// <summary>
     /// Deletes an event.
     /// </summary>
     /// <param name="calendarEvent">The calendar event.</param>
     /// <returns>A value indicating whether the event was deleted or not.</returns>
-    public async Task<bool> DeleteEvent(CalendarEvent calendarEvent, string calendarUcid)
+    public async Task<bool> DeleteEvent(vEvent calendarEvent, vCalendar calendar)
     {
-        string eventUrl = this.GetEventUrl(calendarEvent, calendarUcid);
+        string eventUrl = this.GetEventUrl(calendarEvent, calendar);
         var result = await this.client
             .Delete(eventUrl)
             .Send()
@@ -41,12 +38,11 @@ public partial class Client
     /// <param name="calendarEvent">The calendar event.</param>
     /// <param name="calendar">The calendar.</param>
     /// <returns>A value indicating whether the event was added or updated or not.</returns>
-    public async Task<bool> AddOrUpdateEvent(CalendarEvent calendarEvent, string calendarUcid, Ical.Net.Calendar? calendar = null)
+    public async Task<bool> AddOrUpdateEvent(vEvent calendarEvent, vCalendar calendar)
     {
-        calendar ??= new Ical.Net.Calendar();
-        string eventUrl = this.GetEventUrl(calendarEvent, calendarUcid);
+        string eventUrl = this.GetEventUrl(calendarEvent, calendar);
         var result = await this.client
-            .Put(eventUrl, this.Serialize(calendarEvent, calendar))
+            .Put(eventUrl, calendarEvent.Serialize())
             .Send()
             .ConfigureAwait(false);
 
@@ -65,31 +61,18 @@ public partial class Client
     /// </summary>
     /// <param name="calendarEvent">The calendar event.</param>
     /// <returns>The event url.</returns>
-    private string GetEventUrl(CalendarEvent calendarEvent, string calendarUcid)
+    private string GetEventUrl(vEvent calendarEvent, vCalendar calendar)
     {
         if (calendarEvent.Url == null || !calendarEvent.Url.ToString().StartsWith(this.client.baseUri.ToString()))
         {
-            calendarEvent.Url = new Uri(CombineUri(this.client.baseUri.ToString(), calendarUcid, $"{calendarEvent.Uid}.ics"));
+            calendarEvent.Url = new Uri(CombineUri(this.client.baseUri.ToString(), calendar.Uid!, $"{calendarEvent.Uid}.ics")).ToString();
         }
 
         if (!calendarEvent.Url.ToString().EndsWith(".ics"))
         {
-            calendarEvent.Url = new Uri(CombineUri(calendarEvent.Url.ToString(), $"{calendarEvent.Uid}.ics"));
+            calendarEvent.Url = new Uri(CombineUri(calendarEvent.Url.ToString(), $"{calendarEvent.Uid}.ics")).ToString();
         }
 
         return calendarEvent.Url.ToString();
-    }
-
-    /// <summary>
-    /// Serializes the event.
-    /// </summary>
-    /// <param name="calendarEvent">The calendar event.</param>
-    /// <param name="calendar">The calendar.</param>
-    /// <returns>The serialized event as <see cref="string"/>.</returns>
-    private string Serialize(CalendarEvent calendarEvent, Ical.Net.Calendar calendar)
-    {
-        calendar.Events.Clear();
-        calendar.Events.Add(calendarEvent);
-        return this.calendarSerializer.SerializeToString(calendar);
     }
 }
