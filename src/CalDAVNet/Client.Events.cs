@@ -9,6 +9,7 @@
 
 namespace CalDAVNet;
 
+using ICal.net.Components;
 using iCalNET;
 
 /// <summary>
@@ -21,7 +22,7 @@ public partial class Client
     /// </summary>
     /// <param name="calendarEvent">The calendar event.</param>
     /// <returns>A value indicating whether the event was deleted or not.</returns>
-    public async Task<bool> DeleteEvent(vEvent calendarEvent, vCalendar calendar)
+    public async Task<bool> DeleteEvent(CalendarEvent calendarEvent, Calendar calendar)
     {
         string eventUrl = this.GetEventUrl(calendarEvent, calendar);
         var result = await this.client
@@ -38,7 +39,7 @@ public partial class Client
     /// <param name="calendarEvent">The calendar event.</param>
     /// <param name="calendar">The calendar.</param>
     /// <returns>A value indicating whether the event was added or updated or not.</returns>
-    public async Task<bool> AddOrUpdateEvent(vEvent calendarEvent, vCalendar calendar)
+    public async Task<bool> AddOrUpdateEvent(CalendarEvent calendarEvent, Calendar calendar)
     {
         string eventUrl = this.GetEventUrl(calendarEvent, calendar);
         var result = await this.client
@@ -61,7 +62,7 @@ public partial class Client
     /// </summary>
     /// <param name="calendarEvent">The calendar event.</param>
     /// <returns>The event url.</returns>
-    private string GetEventUrl(vEvent calendarEvent, vCalendar calendar)
+    private string GetEventUrl(CalendarEvent calendarEvent, Calendar calendar)
     {
         if (calendarEvent.Url == null || !calendarEvent.Url.ToString().StartsWith(this.client.baseUri.ToString()))
         {

@@ -9,12 +9,11 @@
 
 namespace CalDAVNet;
 
+using ICal.net.Components;
 using iCalNET;
 using MoreLinq;
 using MoreLinq.Extensions;
 using System;
-using System.Runtime.CompilerServices;
-using System.Security.AccessControl;
 
 /// <summary>
 /// The client class for calendar data.
@@ -30,7 +29,7 @@ public partial class Client
     /// Gets all calendars available for the current user (or none if unauthenticated).
     /// </summary>
     /// <returns>A <see cref="IEnumerable{T}"/> of <see cref="vCalendar"/>s.</returns>
-    public async Task<IEnumerable<vCalendar>> GetAllCalendars()
+    public async Task<IEnumerable<Calendar>> GetAllCalendars()
     {
         // Create the request body.
         var prop = new XElement(Namespaces.DavNs + ElementNames.Prop);
@@ -54,11 +53,11 @@ public partial class Client
 
         if (!result.IsSuccessful)
         {
-            return new List<vCalendar>();
+            return new List<Calendar>();
         }
 
         // Get all calendars by uri.
-        var calendars = new List<vCalendar>();
+        var calendars = new List<Calendar>();
 
         foreach (var resource in result.Resources)
         {
@@ -86,7 +85,7 @@ public partial class Client
     /// <param name="uid">The uid of the calendar.</param>
     /// <returns>The <see cref="vCalendar"/> or <c>null</c> if none was found.</returns>
     /// <exception cref="ArgumentNullException">Thrown if the uid is empty.</exception>
-    public Task<vCalendar?> GetCalendarByUid(string uid)
+    public Task<Calendar?> GetCalendarByUid(string uid)
     {
         if (string.IsNullOrWhiteSpace(uid))
         {
@@ -100,7 +99,7 @@ public partial class Client
     /// Gets the default calendar for the given user.
     /// </summary>
     /// <returns>The <see cref="vCalendar"/> or <c>null</c> if none was found.</returns>
-    public async Task<vCalendar?> GetDefaultCalendar()
+    public async Task<Calendar?> GetDefaultCalendar()
     {
         // Create the request body.
         var prop = new XElement(Namespaces.DavNs + ElementNames.Prop);
@@ -153,7 +152,7 @@ public partial class Client
     /// </summary>
     /// <param name="uri">The uri of the calendar.</param>
     /// <returns>The <see cref="vCalendar"/> or <c>null</c> if none was found.</returns>
-    private async Task<vCalendar?> GetCalendarWithUri(string uri)
+    private async Task<Calendar?> GetCalendarWithUri(string uri)
     {
         // Create the request body.
         var propfind = new XElement(Namespaces.DavNs + ElementNames.PropFind, new XAttribute(XNamespace.Xmlns + ElementNames.D, Namespaces.DavNs));
@@ -180,7 +179,7 @@ public partial class Client
     /// <param name="uri">The uri.</param>
     /// <param name="client">The CalDAV client.</param>
     /// <returns>The <see cref="vCalendar"/> or <c>null</c> if none was found.</returns>
-    private async Task<vCalendar?> DeserializeCalendarResource(IReadOnlyCollection<Resource> resources, string uri)
+    private async Task<Calendar?> DeserializeCalendarResource(IReadOnlyCollection<Resource> resources, string uri)
     {
         // Get resource.
         // Fetch the events.
@@ -201,11 +200,11 @@ public partial class Client
             uri = uri.Remove(uri.Length - 1, 1);
         }
 
-        vCalendar calendar = this.GetCalendar(resource, uri);
+        Calendar calendar = this.GetCalendar(resource, uri);
 
         var events = await this.GetEvents(uri).ConfigureAwait(false);
 
-        calendar.vEvents = events.ToList();
+        calendar.Components.AddRange(events.ToList());
         return calendar;
     }
 
@@ -214,7 +213,7 @@ public partial class Client
     /// </summary>
     /// <param name="uri">The uri.</param>
     /// <returns>A <see cref="IEnumerable{T}"/> of <see cref="CalendarEvent"/>s.</returns>
-    private async Task<IEnumerable<vEvent>> GetEvents(string uri)
+    private async Task<IEnumerable<CalendarEvent>> GetEvents(string uri)
     {
         // Create the request body.
         var query = new XElement(Namespaces.CalNs + ElementNames.CalendarQuery, new XAttribute(XNamespace.Xmlns + ElementNames.D, Namespaces.DavNs), new XAttribute(XNamespace.Xmlns + ElementNames.C, Namespaces.CalNs));
@@ -235,15 +234,21 @@ public partial class Client
             .ConfigureAwait(false);
 
         // Parse the events.
-        return this.GetEvents(result.Resources);
+        return await this.GetEvents(result.Resources);
     }
 
-    private IEnumerable<vEvent> GetEvents(IEnumerable<Resource> resources)
+    private async Task<IEnumerable<CalendarEvent>> GetEvents(IEnumerable<Resource> resources)
     {
-        return resources.Take(1).SelectMany(this.GetEvent);
+        List<CalendarEvent> events = [];
+        foreach (var resource in resources.Take(1))
+        {
+            events.AddRange(await this.GetEvent(resource));
+        }
+
+        return events;
     }
 
-    private IEnumerable<vEvent> GetEvent(Resource resource)
+    private async Task<IEnumerable<CalendarEvent>> GetEvent(Resource resource)
     {
         if (resource.Uri.EndsWith('/'))
         {
@@ -252,19 +257,17 @@ public partial class Client
 
         var calendar = resource.Properties
             .Where(x => x.Key.LocalName.Equals(ElementNames.CalendarData, StringComparison.CurrentCultureIgnoreCase))
-            .Select(x => new vCalendar(x.Value))
+            .Select(x => Calendar.CreateCalendarAsync(x.Value))
             .FirstOrDefault();
 
-        return calendar?.vEvents ?? [];
+        return calendar != null ? (await calendar).GetEvents() : ([]);
     }
 
-    private vCalendar GetCalendar(Resource resource, string uri)
+    private Calendar GetCalendar(Resource resource, string uri)
     {
 
-        var calendar = new vCalendar(string.Empty)
-        {
-            Uri = uri
-        };
+        var calendar = Calendar.CreateCalendar(string.Empty);
+        calendar.Url = uri;
 
         //calendar-order
         foreach (var property in resource.Properties)
@@ -272,7 +275,7 @@ public partial class Client
             switch (property.Key.LocalName)
             {
                 case ElementNames.DisplayName:
-                    calendar.DisplayName = property.Value;
+                    calendar.Name = property.Value;
                     break;
 
                 case ElementNames.Owner:
@@ -300,11 +303,12 @@ public partial class Client
                     break;
 
                 case ElementNames.CreationDate:
-                    calendar.CreationDate = DateTimeOffset.ParseExact(property.Value, DateTimeFormat, CultureInfo.InvariantCulture);
+                    calendar.Created = DateTimeOffset.ParseExact(property.Value, DateTimeFormat, CultureInfo.InvariantCulture);
                     break;
 
                 case ElementNames.TimeZone:
-                    calendar.TimeZone = property.Value;
+                    //TODO
+                    //calendar.TimeZone = property.Value
                     break;
 
                 default:
