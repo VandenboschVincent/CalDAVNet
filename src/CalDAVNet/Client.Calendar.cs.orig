@@ -257,7 +257,7 @@ public partial class Client
 
         var calendar = resource.Properties
             .Where(x => x.Key.LocalName.Equals(ElementNames.CalendarData, StringComparison.CurrentCultureIgnoreCase))
-            .Select(x => Calendar.CreateCalendarAsync(x.Value))
+            .Select(x => Calendar.LoadCalendarAsync(x.Value))
             .FirstOrDefault();
 
         return calendar != null ? (await calendar)?.GetEvents() ?? [] : [];
@@ -266,16 +266,16 @@ public partial class Client
     private Calendar? GetCalendar(Resource resource, string uri)
     {
 
-<<<<<<< Updated upstream
+<<<<<<< HEAD
         var calendar = Calendar.CreateCalendar(string.Empty);
-=======
-        var calendar = Calendar.LoadCalendar(string.Empty);
         if (calendar == null)
         {
             return null;
         }
 
->>>>>>> Stashed changes
+=======
+        var calendar = Calendar.LoadCalendar(string.Empty);
+>>>>>>> 382bbb65e1aae45cfa630716bebb598b3a929ab6
         calendar.Url = uri;
 
         //calendar-order
