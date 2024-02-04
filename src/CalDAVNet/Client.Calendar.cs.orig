@@ -266,12 +266,16 @@ public partial class Client
     private Calendar? GetCalendar(Resource resource, string uri)
     {
 
+<<<<<<< Updated upstream
         var calendar = Calendar.CreateCalendar(string.Empty);
+=======
+        var calendar = Calendar.LoadCalendar(string.Empty);
         if (calendar == null)
         {
             return null;
         }
 
+>>>>>>> Stashed changes
         calendar.Url = uri;
 
         //calendar-order
