@@ -204,7 +204,7 @@ public partial class Client
 
         var events = await this.GetEvents(uri).ConfigureAwait(false);
 
-        calendar?.SubComponents.AddRange(events.ToList());
+        calendar?.Components.AddRange(events.ToList());
         return calendar;
     }
 
@@ -265,17 +265,17 @@ public partial class Client
 
     private Calendar? GetCalendar(Resource resource, string uri)
     {
-        var calendar = new Calendar();
+
+<<<<<<< HEAD
+        var calendar = Calendar.CreateCalendar(string.Empty);
         if (calendar == null)
         {
             return null;
         }
 
-        if (calendar == null)
-        {
-            return null;
-        }
-
+=======
+        var calendar = Calendar.LoadCalendar(string.Empty);
+>>>>>>> 382bbb65e1aae45cfa630716bebb598b3a929ab6
         calendar.Url = uri;
 
         //calendar-order
