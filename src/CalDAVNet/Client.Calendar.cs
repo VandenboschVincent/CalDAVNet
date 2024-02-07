@@ -200,11 +200,11 @@ public partial class Client
             uri = uri.Remove(uri.Length - 1, 1);
         }
 
-        Calendar calendar = this.GetCalendar(resource, uri);
+        Calendar? calendar = this.GetCalendar(resource, uri);
 
         var events = await this.GetEvents(uri).ConfigureAwait(false);
 
-        calendar.Components.AddRange(events.ToList());
+        calendar?.SubComponents.AddRange(events.ToList());
         return calendar;
     }
 
@@ -260,13 +260,17 @@ public partial class Client
             .Select(x => Calendar.LoadCalendarAsync(x.Value))
             .FirstOrDefault();
 
-        return calendar != null ? (await calendar).GetEvents() : ([]);
+        return calendar != null ? (await calendar)?.GetEvents() ?? [] : [];
     }
 
-    private Calendar GetCalendar(Resource resource, string uri)
+    private Calendar? GetCalendar(Resource resource, string uri)
     {
+        var calendar = new Calendar();
+        if (calendar == null)
+        {
+            return null;
+        }
 
-        var calendar = Calendar.LoadCalendar(string.Empty);
         calendar.Url = uri;
 
         //calendar-order

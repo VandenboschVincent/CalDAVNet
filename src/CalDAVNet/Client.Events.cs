@@ -43,7 +43,7 @@ public partial class Client
     {
         string eventUrl = this.GetEventUrl(calendarEvent, calendar);
         var result = await this.client
-            .Put(eventUrl, calendarEvent.Serialize())
+            .Put(eventUrl, this.serializor.SerializeICalObjec(calendarEvent))
             .Send()
             .ConfigureAwait(false);
 

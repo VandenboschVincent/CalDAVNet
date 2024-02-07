@@ -124,6 +124,12 @@ internal class CalDavClient : IDisposable
 
     public void Dispose()
     {
+        this.Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
         this.client.Dispose();
     }
 }
